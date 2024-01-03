@@ -18,7 +18,7 @@ typedef std::vector<Vector> Matrix;
 std::string ToString(const Matrix& V)
 {
     std::string str = "(";
-    for (int i = 0; i < V.size(); i++)
+    for (size_t i = 0; i < V.size(); i++)
     {
         str += std::to_string(V[i][0]);
         str += (i + 1 == V.size() ? ")" : ",");
@@ -29,9 +29,9 @@ std::string ToString(const Matrix& V)
 // Prints a matrix
 void PrintMatrix(const Matrix& M)
 {
-    for (int row = 0; row < M.size(); row++)
+    for (size_t row = 0; row < M.size(); row++)
     {
-        for (int col = 0; col < M[row].size(); col++)
+        for (size_t col = 0; col < M[row].size(); col++)
             std::cout << M[row][col] << "\t";
 
         std::cout << std::endl;
@@ -43,11 +43,11 @@ Matrix Multiply(const Matrix& A, const Matrix& B)
 {
     Matrix AxB(A.size(), Vector(B[0].size(), 0));
 
-    for (int row = 0; row < AxB.size(); row++)
+    for (size_t row = 0; row < AxB.size(); row++)
     {
-        for (int col = 0; col < AxB[row].size(); col++)
+        for (size_t col = 0; col < AxB[row].size(); col++)
         {
-            for (int i = 0; i < A[row].size(); i++)
+            for (size_t i = 0; i < A[row].size(); i++)
                 AxB[row][col] += A[row][i] * B[i][col];
         }
     }
@@ -60,9 +60,9 @@ Matrix Transposed(const Matrix& M)
 {
     Matrix M_transposed(M[0].size(), Vector(M.size(), 0));
 
-    for (int row = 0; row < M_transposed.size(); row++)
+    for (size_t row = 0; row < M_transposed.size(); row++)
     {
-        for (int col = 0; col < M_transposed[row].size(); col++)
+        for (size_t col = 0; col < M_transposed[row].size(); col++)
             M_transposed[row][col] = M[col][row];
     }
 
@@ -73,7 +73,7 @@ Matrix Transposed(const Matrix& M)
 Vector operator-(const Vector& V)
 {
     Vector minusV;
-    for (int i = 0; i < V.size(); i++)
+    for (size_t i = 0; i < V.size(); i++)
         minusV.push_back(-V[i]);
 
     return minusV;
@@ -83,7 +83,7 @@ Vector operator-(const Vector& V)
 Matrix operator-(const Matrix& M)
 {
     Matrix minusM;
-    for (int row = 0; row < M.size(); row++)
+    for (size_t row = 0; row < M.size(); row++)
         minusM.push_back(-M[row]);
 
     return minusM;
@@ -96,11 +96,11 @@ Matrix ComputeMatrixU(const Matrix& v)
     Matrix U(v.size() + 1, Vector(v.size() + 1, 0));
 
     // Fill U with 1 on the main diagonal
-    for (int i = 0; i <= v.size(); i++)
+    for (size_t i = 0; i <= v.size(); i++)
         U[i][i] = 1;
 
     // Fill the first row of U with the elements of v
-    for (int i = 0; i < v.size(); i++)
+    for (size_t i = 0; i < v.size(); i++)
         U[0][i + 1] = v[i][0];
 
     return U;
@@ -117,7 +117,7 @@ Matrix PartitionToSignMatrix1(const Matrix& w)
 {
     Matrix SignMatrix1(w.size() + 1, Vector(w.size() + 1, 0));
     SignMatrix1[0][0] = 1;
-    for (int i = 0; i < w.size(); i++)
+    for (size_t i = 0; i < w.size(); i++)
         SignMatrix1[i + 1][i + 1] = w[i][0];
 
     return SignMatrix1;
@@ -127,7 +127,7 @@ Matrix PartitionToSignMatrix1(const Matrix& w)
 Matrix BitStringToPartition(const std::string& strBits)
 {
     Matrix w(strBits.size(), Vector(1, 0));
-    for (int i = 0; i < strBits.size(); i++)
+    for (size_t i = 0; i < strBits.size(); i++)
     {
         if (strBits[i] == '1')
             w[i][0] = +1;
@@ -139,10 +139,9 @@ Matrix BitStringToPartition(const std::string& strBits)
 }
 
 // Converts a number to a string of bits
-std::string DecimalToBitString(int numDec, int size)
+std::string DecimalToBitString(unsigned int numDec, int size)
 {
     std::string strBits;
-    Matrix w(size, Vector(1, 0));
     for (int i = size-1; i >= 0; i--)
     {
         int k = numDec >> i;
@@ -262,11 +261,11 @@ bool TestAllPartitions(const Matrix& evaluator_w0, const Matrix& v, const Matrix
     std::ofstream fileTestResults(fileTestResultsName);
     fileTestResults << "Partition\tTransformed\tDirect\tCorrect\tFair" << std::endl;
 
-    const int maxDec = std::pow(2, v.size());
+    const unsigned int maxDec = (int)std::pow(2, v.size());
     bool bIsCorrect = true;
-    for (int decNum = 0; decNum < maxDec; decNum++)
+    for (unsigned int decNum = 0; decNum < maxDec; decNum++)
     {
-        const std::string strBits = DecimalToBitString(decNum, v.size());
+        const std::string strBits = DecimalToBitString(decNum, (int)v.size());
         std::string strResult;
         if (!TestPartition(evaluator_w0, v, w0, strBits, strResult))
             bIsCorrect = false;
@@ -298,7 +297,7 @@ bool TestUserDefinedPartition(const Matrix& evaluator_w0, const Matrix& v, const
     {
         std::string strInput;
         std::cin >> strInput;
-        for (int i = 0; i < strInput.size(); i++)
+        for (size_t i = 0; i < strInput.size(); i++)
         {
             if (strInput[i] == '0' || strInput[i] == '1')
                 strBits.append({ strInput[i] });
