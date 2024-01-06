@@ -332,8 +332,8 @@ int main()
     Matrix evaluator_w0 = ComputePartitionEvaluator(v, w0);
 
     std::cout << "Help:\n";
-    std::cout << "Press \"a\" to test that all possible partitions are verified simultaneously.";
-    std::cout << "Press \"u\" to input a partition to test.\n";
+    std::cout << "Press \"i\" to input a partition to test.\n";
+    std::cout << "Press \"a\" to test that all possible partitions are verified simultaneously.\n";
     std::cout << "Press \"x\" to exit.\n";
 
     char key = 0;
@@ -346,7 +346,7 @@ int main()
         case 'a':
             TestAllPartitions(evaluator_w0, v, w0);
             break;
-        case 'u':
+        case 'i':
             TestUserDefinedPartition(evaluator_w0, v, w0);
             break;
         }
