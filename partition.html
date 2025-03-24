@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/14.0.1/math.js" type="text/javascript"></script>
+<style>
+body {width: 500px; padding: 20px; text-align: justify; text-justify: inter-word;}
+fieldset {display: table;}
+p.controls{display: table-row; width: 100%;}
+label {display: table-cell; padding-right: 10px;}
+input {display: table-cell; align: right; width: 305px;}
+table {width: 100%;}
+table,th,td {border: 1px solid gray; border-collapse: collapse;}
+th {padding: 5px; background-color: #abebc6; width: 20%; text-align: center;}
+td {padding-left: 5px; padding-right: 5px;}
+binary,table td:nth-child(1) {text-align: center; font-family: "Lucida Console", "Menlo", "Monaco", "Courier", monospace;}
+table td:nth-child(2), td:nth-child(3) {text-align: right;}
+table td:nth-child(4), td:nth-child(5) {text-align: center;}
+tr.fair {background-color: #d6eaf8; color: #1b4f72; font-weight: bold;}
+tr.failed {background-color: red; color: yellow;}
+p.abstract{border: 1px solid gray; padding: 5px 10px;}
+p.resultmsg{border: 1px solid; border-color: #e74c3c; background-color: #f7dc6f; color: #e74c3c; padding: 5px 10px; font-weight: bold;}
+button {background-color: #04aa6d; border: none; color: white; padding: 7px 16px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; width:100%;}
+</style>
+
+<head>
+<script>
+var tableHeader = "<th>Partition</th><th>Decrypted<br>difference </th><th>Direct<br>difference</th><th>Fair<br>partition</th><th>Verification<br>successful</th>";
+
+// Converts a string containing a list of numbers to a vector
+function String2Vector(strNumbers) {
+	const arrayNumbers = strNumbers.split(',').map(Number);
+	const matrixNumbers = math.matrix([arrayNumbers]);
+	return math.transpose(matrixNumbers);
+}
+
+// Converts a vector to a string containing a list of numbers
+function Vector2String(vector) {
+	return vector.toArray().flat().join(',');
+}
+
+// Gets the dimension of a vector
+function getSizeOfVector(vector) {
+	return math.size(vector).get([0]);
+}
+
+// Computes the matrix U from the matrix v
+function ComputeMatrixU(vector) {
+	const dim = getSizeOfVector(vector);
+	// Initialize matrix U with 0
+	let matU = math.identity(dim + 1, dim + 1);
+	// Fill U with 1 on the main diagonal
+	for (let i = 0; i <= dim; i++)
+		matU.set([i,i], 1);
+	// Fill the first row of U with the elements of the vector
+	for (let i = 0; i < dim; i++)
+		matU.set([0,i + 1], vector.get([i,0]));
+	return matU;
+}
+
+// Computes the inverse of a matrix like U
+function ComputeMatrixU_inverse(vector) {
+	return ComputeMatrixU(math.multiply(vector, -1));
+}
+
+// Converts partition to extended S matrix
+function PartitionToSignMatrix1(w) {
+	const dim = getSizeOfVector(w);
+	SignMatrix1 = math.zeros(dim + 1, dim + 1);
+	SignMatrix1.set([0,0], 1);
+	for (let i = 0; i < dim; i++)
+		SignMatrix1.set([i + 1,i + 1],w.get([i,0]));
+	return SignMatrix1;
+}
+
+// Converts a string of "0"s and "1"s to a partition matrix of "-1"s and "1"s
+function BitStringToPartitionVector(strBits) {
+	const arrayValues = strBits.toString().split('').map(c => [c === '0' ? -1 : 1]);
+	return math.matrix(arrayValues);
+}
+
+// Converts a number to a string of bits
+function NumberToBinaryString(number, length) {
+	// Convert to binary and pad with leading zeros
+	const binary = number.toString(2);
+	return binary.padStart(length, '0');
+}
+
+// Computes the matrix that transforms the result for w0 to that for w
+function ComputeTransformationMatrix(v, w0, w) {
+	const matU = ComputeMatrixU(v);
+	const invU = ComputeMatrixU_inverse(v);
+	const S10 = PartitionToSignMatrix1(w0);
+	const S1 = PartitionToSignMatrix1(w);
+	const matS = math.multiply(S10, S1);
+	return math.multiply(matU, math.multiply(matS, invU));
+}
+
+// Computes U applied to w
+function ComputePartitionEvaluator(v, w) {
+	// insert a 0 at the beginning of the vector
+	const w1 = math.concat(math.matrix([[0]]),w,0);
+	const matU = ComputeMatrixU(v);
+	return math.multiply(matU, w1);
+}
+
+// Verifies if the partition w of v is fair
+function IsPartitionFair(v, w) {
+	const Uw1 = ComputePartitionEvaluator(v, w);
+	return Uw1.get(0,0) === 0;
+}
+
+// Verifies if a partition v is computed simultaneously with w0
+// and returns the result in a string
+function TestPartition(evaluator_w0, v, w0, strBits) {
+	const w = BitStringToPartitionVector(strBits);
+	const evaluator_w_direct = ComputePartitionEvaluator(v, w);
+	const R = ComputeTransformationMatrix(v, w0, w);
+	const evaluator_w_transformation = math.multiply(R, evaluator_w0);
+	const ewd00 = evaluator_w_direct.get([0,0]);
+	const ewt00 = evaluator_w_transformation.get([0,0]);
+	let bIsCorrect = true;
+	let strResult = "<tr>";
+	if (ewt00 === ewd00) {
+		if (ewd00 === 0)
+			strResult = "<tr class='fair'>";
+		else
+			strResult = "<tr>";
+	} else
+		strResult = "<tr class='failed'>";
+	strResult += "<td>" + strBits + "</td>";
+	strResult += "<td>" + ewt00.toString() + "</td>";
+	strResult += "<td>" + ewd00.toString() + "</td>";
+	if (ewd00 === 0)
+		strResult += "<td style='color:green'>&checkmark;</td>";
+	else
+		strResult += "<td style='color:red'>&cross;</td>";
+	if (ewt00 === ewd00)
+		strResult += "<td style='color:green'>&checkmark;</td>";
+	else {
+		strResult += "<td style='color:red'>&cross;</td>";
+		bIsCorrect = false;
+	}
+	strResult += "</tr>";
+	return [bIsCorrect, strResult];
+}
+
+// Tests whether all partitions are computed simultaneously with w0
+function TestAllPartitions() {
+	if(!validateInputs(false))
+		return;
+	const v = String2Vector(document.getElementById("listNumbers").value);
+	const w0 = BitStringToPartitionVector(document.getElementById("partitionDefault").value);
+	const evaluator_w0 = ComputePartitionEvaluator(v, w0);
+	const dim = getSizeOfVector(v);
+	const maxDec = math.pow(2, dim);
+	let bIsCorrect = true;
+	// create a HTML table
+	let strTable = "<table>" + tableHeader;
+	for (let decNum = 0; decNum < maxDec; decNum++) {
+		let bIsCorrectCurrent = true;
+		const strBits = NumberToBinaryString(decNum, dim);
+		[bIsCorrectCurrent, strPartitionResult] = TestPartition(evaluator_w0, v, w0, strBits);
+		if(!bIsCorrectCurrent)
+			bIsCorrect = false;
+		strTable += strPartitionResult;
+	}
+	strTable += "</table>";
+	let strResult = "<p class=\"resultmsg\">Result: ";
+	if (bIsCorrect)
+		strResult += "Verification succesful!</p>" + strTable;
+	else
+		strResult += "Verification failed!</p>";
+	document.getElementById("result").innerHTML = strResult;
+}
+
+// Tests if a user defined partition is computed simultaneously with w0
+function TestUserDefinedPartition() {
+	if(!validateInputs(true))
+		return;
+	const v = String2Vector(document.getElementById("listNumbers").value);
+	const w0 = BitStringToPartitionVector(document.getElementById("partitionDefault").value);
+	const evaluator_w0 = ComputePartitionEvaluator(v, w0);
+	const strBits = document.getElementById("partitionUserDef").value;
+	// create a HTML table
+	let strTable = "<table>" + tableHeader;
+	[bIsCorrect, strPartitionResult] = TestPartition(evaluator_w0, v, w0, strBits);
+	let strResult = "<p class=\"resultmsg\">Result: ";
+	if (bIsCorrect)
+		strResult += "Verification succesful!</p>";
+	else
+		strResult += "Verification failed!</p>";
+	strResult += strTable + strPartitionResult + "</table>";
+	document.getElementById("result").innerHTML = strResult;
+}
+
+// Validates the format of the data of an input element in the UI
+function validateInput(inputElement, pattern, msg) {
+	const inputValue = inputElement.value;
+	const regex = new RegExp(pattern);
+	if (regex.test(inputValue)) {
+		inputElement.style.border = "";
+		return true;
+	} else {
+		inputElement.style.border = "2px solid red";
+		alert(msg);
+		return false;
+	}
+}
+
+// Validates the format of the input data in the UI
+function validateInputs(all) {
+	if(!validateInput(document.getElementById("listNumbers"), "^[0-9,]+$", "Please enter only coma separated natural numbers"))
+		return false;
+	const v = String2Vector(document.getElementById("listNumbers").value);
+	const dim = getSizeOfVector(v);
+	const pattern = "^[01]{" + Math.floor(dim) + "}$";
+	let msg = "The partition data should consist of " + dim + " digits with values 0 or 1";
+	if(!validateInput(document.getElementById("partitionDefault"), pattern, msg))
+		return false;
+	if(all && !validateInput(document.getElementById("partitionUserDef"), pattern, msg))
+		return false;
+	return true;
+}
+</script>
+</head>
+
+<body>
+<h2>DIY experiment: Relativity of information</h2>
+<p class="abstract">Whatever meaning we see in a computer or in the information it stores and the computation it does, this meaning is due to our own conventions.
+If we change the convention, we change the meaning.
+Without us to make the convention there is no meaning in a computer.</p>
+<p>This JavaScript program demonstrates that when a computer does a computation, it also does the computations for the other possible inputs, simultaneously. The alternative computations are "encrypted" in that computation, and they can be "decrypted" by changing the convention.</p>
+<p>For this demonstration, the program verifies if a partition of a list of numbers into two sublists is fair, that is, if the sums of the two sublists of numbers are equal (<a href="https://en.wikipedia.org/wiki/Partition_problem" target="_blank">the partition problem</a>).
+The program does the verification only once, for a default partition, and it can decrypt the results for any other partition.</p>
+<fieldset>
+	<legend>Input data</legend>
+	<p class="controls">
+		<label for="listNumbers">List of numbers:</label>
+		<input id="listNumbers" name="listNumbers" type="text" value="5,5,5,10,10,25">
+	</p>
+	<p class="controls">
+		<label for="partitionDefault">Default partition:</label>
+		<input id="partitionDefault" name="partitionDefault" type="text" class="binary" value="000000">
+	</p>
+	<p class="controls">
+		<label for="partitionUserDef">User defined partition:</label>
+		<input id="partitionUserDef" name="partitionUserDef" type="text" class="binary" value="000111">
+	</p>
+	<p>
+		<button type="button" onclick="TestUserDefinedPartition()">  Is the user defined partition verified along with the default partition?</button>
+	</p>
+	<p>
+		<button type="button" onclick="TestAllPartitions()">Are all possible partitions verified along with the default partition?</button>
+	</p>
+</fieldset>
+<p>Right-click to view the code or run it line-by-line.</p>
+<p id="result"></p>
+</body>
+</html>
